@@ -1,0 +1,21 @@
+# Usage: SAINA_API_KEY=$(openssl rand -hex 32) docker compose up -d
+# Pick a model with SAINA_MODEL=<name of a file in models/, without .env>.
+# The first start downloads that model's pinned weights into the hf-cache volume.
+services:
+  server:
+    image: ${SAINA_IMAGE:-ghcr.io/run-saina/saina-server:latest}
+    build: .
+    ports:
+      - "127.0.0.1:${SAINA_PORT:-8000}:8000"
+    env_file: models/${SAINA_MODEL:-helm-0.8b}.env
+    environment:
+      SAINA_API_KEY: ${SAINA_API_KEY:?Set SAINA_API_KEY}
+    volumes:
+      - hf-cache:/cache
+      # Or serve a local staged checkpoint instead of the Hub:
+      # - ./checkpoint:/models/local:ro   (and set SAINA_CHECKPOINT=/models/local)
+    restart: unless-stopped
+    mem_limit: ${SAINA_MEM_LIMIT:-8g}
+
+volumes:
+  hf-cache:
