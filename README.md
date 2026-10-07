@@ -7,6 +7,29 @@ The image `ghcr.io/run-saina/saina-server` is model-agnostic and contains no
 weights. On first start it downloads the selected model's pinned Hugging Face
 revision into a cache volume; later starts take seconds.
 
+## Docker run
+
+Pull the released image and start one container. The key you export here is the
+bearer token clients send.
+
+```sh
+export SAINA_API_KEY=$(openssl rand -hex 32)
+docker run -d --name saina \
+  -p 127.0.0.1:8000:8000 \
+  -e SAINA_API_KEY=$SAINA_API_KEY \
+  -e SAINA_CHECKPOINT=run-saina/saina-helm-0.8b \
+  -e SAINA_REVISION=e82055b348d02bb43552ccba88eda24835ba6baf \
+  -e SAINA_MAX_LENGTH=8192 \
+  -v saina-hf-cache:/cache \
+  --memory 8g --restart unless-stopped \
+  ghcr.io/run-saina/saina-server:0.1.0
+```
+
+The first start downloads the pinned weights (~1.7 GB) into the `saina-hf-cache`
+volume. Check it with the `curl` below once `docker logs saina` shows the model loaded.
+The values for `SAINA_CHECKPOINT` and `SAINA_REVISION` are the ones in
+`models/helm-0.8b.env`; Compose reads that file for you.
+
 ## Docker Compose
 
 ```sh
