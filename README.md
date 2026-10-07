@@ -43,6 +43,9 @@ curl http://127.0.0.1:8000/v1/ask \
   -d '{"model":"saina-helm-0.8b","state":"I was charged twice.","questions":{"team":{"type":"single_choice","question":"Which team?","options":{"billing":"Billing","technical":"Technical","other":"Other"}}}}'
 ```
 
+Or point the hosted [playground](https://saina.run/playground) at `http://127.0.0.1:8000`
+with the same key. It runs in your browser and talks to your server directly.
+
 The port binds to localhost only. Put TLS in front before exposing it.
 
 ## Models
@@ -64,6 +67,7 @@ To serve a local staged checkpoint, mount it read-only and set
 | `SAINA_MODEL` | Which `models/*.env` to load (compose only). |
 | `SAINA_CHECKPOINT`, `SAINA_REVISION` | Hub repo plus immutable commit, or a local path. |
 | `SAINA_MAX_LENGTH` | Token limit. Longer inputs are rejected, never truncated. |
+| `SAINA_CORS_ORIGINS` | Browser origins allowed to call the API. Default `https://saina.run` (the playground). Empty disables. |
 | `SAINA_PORT`, `SAINA_MEM_LIMIT` | Host port and memory cap (compose only). |
 
 ## Building

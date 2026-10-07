@@ -3,7 +3,7 @@
 # Official Docker library image via AWS's public mirror (no Docker Hub rate limits).
 ARG BASE=public.ecr.aws/docker/library/python:3.12-slim
 FROM ${BASE} AS build
-ARG SAINA_SPEC="saina[local,server]==0.1.0"
+ARG SAINA_SPEC="saina[local,server]==0.1.1"
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN python -m venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH
