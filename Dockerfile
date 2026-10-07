@@ -15,7 +15,7 @@ COPY wheels/ /wheels/
 RUN pip install --find-links /wheels "${SAINA_SPEC}" \
  && site=/opt/venv/lib/python3.12/site-packages \
  && rm -rf $site/torch/test $site/torch/include \
- && pip uninstall -y pip setuptools wheel >/dev/null 2>&1 || true
+ && (pip uninstall -y pip setuptools wheel >/dev/null 2>&1 || true)
 
 FROM ${BASE}
 COPY --from=build /opt/venv /opt/venv
