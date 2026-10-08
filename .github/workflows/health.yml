@@ -1,9 +1,13 @@
 name: Health (api.saina.run)
-# Checks the hosted API every 5 minutes. A failed run emails the repository's notification
+# Checks the hosted API every 30 minutes. A failed run emails the repository's notification
 # recipients; the failover runbook is in Saina's private ops docs.
+#
+# Cutover: while api.saina.run is still the bare inference server, `check` runs. Once DNS points
+# at the gateway, set the repository variable GATEWAY_LIVE=true: `check` stops and `gateway`
+# verifies the gateway's /healthz and its deployed-model manifest instead.
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 permissions: {}
 concurrency:
@@ -11,6 +15,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   check:
+    if: vars.GATEWAY_LIVE != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -23,3 +28,52 @@ jobs:
           done
           echo "::error::api.saina.run is not ready. Runbook: ops/CONTINUITY.md in run-saina/website."
           exit 1
+
+  gateway:
+    if: vars.GATEWAY_LIVE == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      # The deployed model the manifest must report (plan: "Verify the actual deployed model").
+      # Override with repository variables when the pinned revision or tokenizer changes.
+      EXPECTED_MODEL_REVISION: ${{ vars.EXPECTED_MODEL_REVISION || 'e82055b348d02bb43552ccba88eda24835ba6baf' }}
+      EXPECTED_TOKENIZER_SHA256: ${{ vars.EXPECTED_TOKENIZER_SHA256 || 'e833ccaeac5306a893626805fd852b23ee8f55426c8fb6da467729ef416c2ff9' }}
+    steps:
+      - name: GET https://api.saina.run/healthz and check the manifest (3 tries over 1 minute)
+        shell: python
+        run: |
+          import json, os, sys, time, urllib.request
+
+          def problems(h):
+              m = h.get('manifest') or {}
+              out = []
+              if h.get('status') != 'ok': out.append(f"status={h.get('status')!r}")
+              if h.get('database') is not True: out.append('database not ready')
+              if not m.get('code_digest'): out.append('manifest.code_digest missing')
+              if m.get('model_revision') != os.environ['EXPECTED_MODEL_REVISION']:
+                  out.append(f"manifest.model_revision={m.get('model_revision')!r}")
+              if m.get('tokenizer_sha256') != os.environ['EXPECTED_TOKENIZER_SHA256']:
+                  out.append(f"manifest.tokenizer_sha256={m.get('tokenizer_sha256')!r}")
+              if m.get('price_version') is None: out.append('manifest.price_version missing')
+              return out
+
+          for attempt in range(1, 4):
+              try:
+                  with urllib.request.urlopen('https://api.saina.run/healthz', timeout=10) as r:
+                      health = json.load(r)
+                  found = problems(health)
+                  if not found:
+                      print('ok:', json.dumps(health))
+                      # Degraded durability, no replay store or no GPU are reported, not failed:
+                      # they have their own alerts and the gateway stays usable without them.
+                      for key, bad in (('durability', 'degraded'), ('replay_store', False), ('inference_backends', 0)):
+                          if health.get(key) == bad:
+                              print(f'::warning::{key}={bad!r}')
+                      sys.exit(0)
+                  print(f'attempt {attempt}: ' + '; '.join(found))
+              except Exception as exc:
+                  print(f'attempt {attempt} failed: {exc}')
+              if attempt < 3:
+                  time.sleep(25)
+          print('::error::api.saina.run gateway is not healthy. Runbook: ops/CONTINUITY.md in run-saina/website.')
+          sys.exit(1)
