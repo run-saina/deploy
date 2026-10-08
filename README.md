@@ -22,7 +22,7 @@ docker run -d --name saina \
   -e SAINA_MAX_LENGTH=8192 \
   -v saina-hf-cache:/cache \
   --memory 8g --restart unless-stopped \
-  ghcr.io/run-saina/saina-server:0.1.0
+  ghcr.io/run-saina/saina-server:0.1.2
 ```
 
 The first start downloads the pinned weights (~1.7 GB) into the `saina-hf-cache`
@@ -69,6 +69,11 @@ To serve a local staged checkpoint, mount it read-only and set
 | `SAINA_MAX_LENGTH` | Token limit. Longer inputs are rejected, never truncated. |
 | `SAINA_CORS_ORIGINS` | Browser origins allowed to call the API. Default `https://saina.run` (the playground). Empty disables. |
 | `SAINA_PORT`, `SAINA_MEM_LIMIT` | Host port and memory cap (compose only). |
+
+## GPU
+
+For NVIDIA GPUs there's a separate image with the weights baked in, so it starts without a
+download: `ghcr.io/run-saina/saina-server:0.1.2-cuda`. See [`cuda/README.md`](cuda/README.md).
 
 ## Building
 

@@ -1,0 +1,25 @@
+name: Health (api.saina.run)
+# Checks the hosted API every 5 minutes. A failed run emails the repository's notification
+# recipients; the failover runbook is in Saina's private ops docs.
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: health
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: GET https://api.saina.run/healthz (3 tries over 1 minute)
+        run: |
+          for i in 1 2 3; do
+            body=$(curl -s --max-time 10 https://api.saina.run/healthz || true)
+            if echo "$body" | grep -q '"status":"ready"'; then echo "ready: $body"; exit 0; fi
+            echo "attempt $i failed: ${body:-no response}"; sleep 25
+          done
+          echo "::error::api.saina.run is not ready. Runbook: ops/CONTINUITY.md in run-saina/website."
+          exit 1

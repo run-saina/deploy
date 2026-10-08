@@ -1,2 +1,3 @@
 *
 !wheels/
+!cuda/entrypoint.sh
